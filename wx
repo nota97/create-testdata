@@ -1,0 +1,251 @@
+import wx
+import wx.grid
+import openpyxl
+
+wb = openpyxl.load_workbook('名单.xlsx')
+sheet = wb[wb.sheetnames[0]]
+
+data = [(" ", " ", " ", " ", " ", " ", "")]
+# col_names = ["学号", "姓名", "班级", "考勤1", "考勤2", "考勤3"]
+Row = -1
+Col = -1
+flag=1
+wcol=-1
+name=""
+
+class MyFrame(wx.Frame):
+    def __init__(self):
+        super().__init__(
+            parent=None,
+            title="高校考勤系统",
+            size=(700, 500)
+        )
+        self.panel = wx.Panel(parent=self)
+        st1 = wx.StaticText(self.panel, label="请输入文件名：")
+        self.tx1 = wx.TextCtrl(self.panel)
+        bt1 = wx.Button(self.panel, label="打开Excel", id=1)
+        # self.Bind(wx.EVT_BUTTON, self.bt1on_click,bt1)
+        hbox = wx.BoxSizer(wx.HORIZONTAL)
+        hbox.Add(st1, 1, flag=wx.LEFT | wx.ALIGN_CENTER, border=5)
+        hbox.Add(self.tx1, 1, flag=wx.LEFT | wx.ALIGN_CENTER | wx.FIXED_MINSIZE, border=5)
+        hbox.Add(bt1, 1, flag=wx.LEFT | wx.ALIGN_CENTER | wx.FIXED_MINSIZE, border=5)
+
+        bt2 = wx.Button(self.panel, label="出勤", id=2)
+        bt3 = wx.Button(self.panel, label="缺勤", id=3)
+        bt4 = wx.Button(self.panel, label="迟到", id=4)
+        bt5 = wx.Button(self.panel, label="点名", id=5)
+        self.Bind(wx.EVT_BUTTON, self.bton_click)
+        hbox1 = wx.BoxSizer(wx.HORIZONTAL)
+        hbox1.AddMany([
+            (bt2, 1, wx.ALIGN_CENTRE, 5),
+            (bt3, 1, wx.ALIGN_CENTRE, 5),
+            (bt4, 1, wx.ALIGN_CENTRE, 5)
+        ])
+        self.stb = wx.StatusBar(self.panel)
+        self.stb.SetStatusText("准备就绪")
+
+        self.grid = self.CreateGrid(self.panel)
+        self.Bind(wx.grid.EVT_GRID_CMD_SELECT_CELL, self.OnLabelLeftClick, self.grid)
+        for i in range(len(data[0]) + 10):
+            if i == 0:
+                self.grid.SetColSize(i, 125)
+            else:
+                self.grid.SetColSize(i, 76)
+        for j in range(len(data) + 50):
+            self.grid.SetRowSize(j, 30)
+        self.grid.SetScrollbars(1, 1, 1500, 1500)
+
+        vbox = wx.BoxSizer(wx.VERTICAL)
+        vbox.AddMany([
+            (hbox, 1, wx.ALIGN_TOP | wx.ALIGN_CENTRE, 10),
+            (self.grid, 2, wx.ALIGN_CENTRE | wx.ALL | wx.EXPAND, 10),
+            (hbox1, 1, wx.ALIGN_CENTRE, 10),
+            (bt5, 1, wx.ALIGN_CENTRE, 10),
+            (self.stb, 0.5, wx.EXPAND)
+        ])
+        self.panel.SetSizer(vbox)
+
+    def get_newdata(self):
+        global data, wb, sheet,name
+        if self.tx1.GetValue() is "":
+            data = []
+            print("输入为空")
+        else:
+            name = str(self.tx1.GetValue()) + '.xlsx'
+            wb = openpyxl.load_workbook(name)
+            sheet = wb[wb.sheetnames[0]]
+            data = []
+            for row in range(1, sheet.max_row + 1):
+                rowdata = []
+                for col in range(1, sheet.max_column + 1):
+                    if sheet.cell(row=row, column=col).value is None:
+                        rowdata.append(" ")
+                    else:
+                        rowdata.append(sheet.cell(row=row, column=col).value)
+                data.append(rowdata)
+        self.grid.ClearGrid()
+        for r in range(len(data)):
+            for c in range(len(data[r])):
+                # grid.SetColLabelValue(c, col_names[c])
+                self.grid.SetCellValue(r, c, str(data[r][c]))
+                font = wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.BOLD, False)
+                font1 = wx.Font(8, wx.DEFAULT, wx.NORMAL, wx.NORMAL, False)
+                self.grid.SetLabelFont(font1)
+                self.grid.SetCellFont(r, c, font)
+                self.grid.SetCellAlignment(r, c, wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
+
+    def bton_click(self, event):
+        global sheet, wb,data
+        id = event.GetId()
+        if id == 1:
+            pass
+        elif id == 2:
+            sheet.cell(row=Row, column=Col).value = "出勤"
+            name = str(self.tx1.GetValue()) + '.xlsx'
+            wb.save(name)
+        elif id == 3:
+            sheet.cell(row=Row, column=Col).value = "缺勤"
+            name = str(self.tx1.GetValue()) + '.xlsx'
+            wb.save(name)
+        elif id == 4:
+            sheet.cell(row=Row, column=Col).value = "迟到"
+            name = str(self.tx1.GetValue()) + '.xlsx'
+            wb.save(name)
+        elif id == 5:
+            global flag,wcol
+            frame1 = nameFrame()
+            frame1.Show()
+            frame1.tx1.SetValue(str(data[flag][0]))
+            frame1.tx2.SetValue(data[flag][1])
+            flag+=1
+            for i in range (len(data[flag])):
+                if data[flag][i]==" ":
+                    wcol=i+1
+                    break
+            print(wcol)
+        self.get_newdata()
+
+    def OnLabelLeftClick(self, event):
+        global Row, Col
+        print(event.GetRow() + 1, event.GetCol() + 1)
+        print(data[event.GetRow()])
+        Row = event.GetRow() + 1
+        Col = event.GetCol() + 1
+        event.Skip()
+
+    def CreateGrid(self, parent):
+        grid = wx.grid.Grid(parent, -1, size=(400, 300))
+        grid.CreateGrid(len(data) + 50, len(data[0]) + 10)
+        for r in range(len(data)):
+            for c in range(len(data[r])):
+                # grid.SetColLabelValue(c, col_names[c])
+                grid.SetCellValue(r, c, str(data[r][c]))
+                font = wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.BOLD, False)
+                font1 = wx.Font(8, wx.DEFAULT, wx.NORMAL, wx.NORMAL, False)
+                grid.SetLabelFont(font1)
+                grid.SetCellFont(r, c, font)
+                grid.SetCellAlignment(r, c, wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
+        grid.AutoSize()
+        return grid
+
+
+class nameFrame(wx.Frame):
+    def __init__(self):
+        super().__init__(
+            parent=None,
+            title="点名",
+            size=(500, 300)
+        )
+        self.panel = wx.Panel(parent=self)
+        st1 = wx.StaticText(self.panel, label="学号：")
+        st2 = wx.StaticText(self.panel, label="姓名：")
+        self.tx1=wx.TextCtrl(self.panel)
+        self.tx1.SetEditable(False)
+        self.tx2=wx.TextCtrl(self.panel)
+        self.tx2.SetEditable(False)
+        hbox1 = wx.BoxSizer(wx.HORIZONTAL)
+        hbox1.AddMany([
+            (st1, 1, wx.ALIGN_CENTRE , 10),
+            (self.tx1, 1, wx.ALIGN_CENTRE , 10)
+        ])
+        hbox2 = wx.BoxSizer(wx.HORIZONTAL)
+        hbox2.AddMany([
+            (st2, 1, wx.ALIGN_CENTRE, 10),
+            (self.tx2, 1, wx.ALIGN_CENTRE, 10)
+        ])
+        hbox3 = wx.BoxSizer(wx.HORIZONTAL)
+        bt2 = wx.Button(self.panel, label="出勤", id=2)
+        bt3 = wx.Button(self.panel, label="缺勤", id=3)
+        bt4 = wx.Button(self.panel, label="迟到", id=4)
+        self.Bind(wx.EVT_BUTTON, self.btn_click)
+        hbox3.AddMany([
+            (bt2, 1, wx.ALIGN_CENTRE, 5),
+            (bt3, 1, wx.ALIGN_CENTRE, 5),
+            (bt4, 1, wx.ALIGN_CENTRE, 5)
+        ])
+        vbox = wx.BoxSizer(wx.VERTICAL)
+        vbox.AddMany([
+            (hbox1, 1, wx.ALIGN_CENTER, 10),
+            (hbox2, 1, wx.ALIGN_CENTER, 10),
+            (hbox3, 1, wx.ALIGN_CENTER, 10)
+        ])
+        self.panel.SetSizer(vbox)
+
+    def btn_click(self,event):
+        global sheet, wb, data,flag,app
+        id = event.GetId()
+        if id==2:
+            sheet.cell(row=flag, column=wcol).value = "出勤"
+            wb.save(name)
+            if flag == len(data):
+                flag=1
+                print("test:"+str(flag))
+                self.Close()
+                app.updateUI()
+            else:
+                self.tx1.SetValue(str(data[flag][0]))
+                self.tx2.SetValue(str(data[flag][1]))
+                print(flag)
+                flag+=1
+        elif id==3:
+            sheet.cell(row=flag, column=wcol).value = "缺勤"
+            wb.save(name)
+            if flag == len(data):
+                flag = 1
+                self.Close()
+                app.updateUI()
+            else:
+                self.tx1.SetValue(str(data[flag][0]))
+                self.tx2.SetValue(str(data[flag][1]))
+                print(flag)
+                flag += 1
+        elif id==4:
+            sheet.cell(row=flag, column=wcol).value = "迟到"
+            wb.save(name)
+            if flag == len(data):
+                flag = 1
+                self.Close()
+                app.updateUI()
+            else:
+                self.tx1.SetValue(str(data[flag][0]))
+                self.tx2.SetValue(str(data[flag][1]))
+                flag += 1
+
+
+class App(wx.App):
+    def OnInit(self):
+        self.frame = MyFrame()
+        self.frame.Show()
+        return True
+
+    def updateUI(self):
+        self.frame.get_newdata()
+
+    def OnExit(self):
+        print("退出程序")
+        return 0
+
+
+if __name__ == '__main__':
+    app = App()
+    app.MainLoop()
